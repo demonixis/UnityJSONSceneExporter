@@ -2,6 +2,11 @@
 
 namespace Demonixis.UnityJSONSceneExporter
 {
+    public enum ColliderType
+    {
+        Box = 0, Sphere, Capsule, Mesh
+    }
+
     [Serializable]
     public struct UMeshRenderer
     {
@@ -17,8 +22,10 @@ namespace Demonixis.UnityJSONSceneExporter
         public float[] Positions;
         public float[] Normals;
         public float[] UVs;
-        public int[] Indices;
+        public int[][] Indices;
         public int[][] Triangles;
+        public uint[] VertexStart;
+        public uint[] IndexStart;
         public int SubMeshCount;
         public int MeshFormat;
     }
@@ -29,6 +36,7 @@ namespace Demonixis.UnityJSONSceneExporter
         public float[] Scale;
         public float[] Offset;
         public string MainTexture;
+        public string ShaderName;
     }
 
     [Serializable]
@@ -38,6 +46,7 @@ namespace Demonixis.UnityJSONSceneExporter
         public float[] Min;
         public float[] Max;
         public float Radius;
+        public int Type;
     }
 
     [Serializable]

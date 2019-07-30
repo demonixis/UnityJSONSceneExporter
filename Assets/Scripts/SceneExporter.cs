@@ -37,7 +37,7 @@ namespace Demonixis.UnityJSONSceneExporter
         [SerializeField]
         private string m_ExportPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         [SerializeField]
-        private string m_ExportFilename = Application.productName;
+        private string m_ExportFilename = "GameMap";
 
         [ContextMenu("Export")]
         public void Export()
@@ -54,8 +54,7 @@ namespace Demonixis.UnityJSONSceneExporter
             }
 
             var json = JsonConvert.SerializeObject(list.ToArray(), m_JSONFormat);
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            path = Path.Combine(m_ExportPath, $"{m_ExportFilename}.json");
+            var path = Path.Combine(m_ExportPath, $"{m_ExportFilename}.json");
 
             File.WriteAllText(path, json);
 
@@ -80,24 +79,28 @@ namespace Demonixis.UnityJSONSceneExporter
             var collider = tr.GetComponent<Collider>();
             if (collider != null)
             {
-                var uCollider = new UCollider
+                var type = ColliderType.Box;
+                if (collider is SphereCollider)
+                    type = ColliderType.Sphere;
+                else if (collider is CapsuleCollider)
+                    type = ColliderType.Capsule;
+                else if (collider is MeshCollider)
+                    type = ColliderType.Mesh;
+
+                uGameObject.Collider = new UCollider
                 {
                     Min = ToFloat3(collider.bounds.min),
                     Max = ToFloat3(collider.bounds.max),
-                    Enabled = collider.enabled
+                    Enabled = collider.enabled,
+                    Radius = collider.GetComponent<SphereCollider>()?.radius ?? 0,
+                    Type = (int)type
                 };
-
-                var sphere = collider as SphereCollider;
-                if (sphere != null)
-                    uCollider.Radius = sphere.radius;
-
-                uGameObject.Collider = uCollider;
             }
 
             var light = tr.GetComponent<Light>();
             if (light != null)
             {
-                var uLight = new ULight
+                uGameObject.Light = new ULight
                 {
                     Intensity = light.intensity,
                     Radius = light.range,
@@ -107,20 +110,18 @@ namespace Demonixis.UnityJSONSceneExporter
                     Enabled = light.enabled,
                     Type = (int)light.type
                 };
-
-                uGameObject.Light = uLight;
             }
 
             var reflectionProbe = tr.GetComponent<ReflectionProbe>();
             if (reflectionProbe != null)
             {
-                var uReflectionProbe = new UReflectionProbe
+                uGameObject.ReflectionProbe = new UReflectionProbe
                 {
                     BoxSize = ToFloat3(reflectionProbe.size),
                     BoxMin = ToFloat3(reflectionProbe.bounds.min),
                     BoxMax = ToFloat3(reflectionProbe.bounds.max),
                     Intensity = reflectionProbe.intensity,
-                    ClipPlanes = new []
+                    ClipPlanes = new[]
                     {
                         reflectionProbe.nearClipPlane,
                         reflectionProbe.farClipPlane
@@ -129,8 +130,6 @@ namespace Demonixis.UnityJSONSceneExporter
                     IsBacked = reflectionProbe.refreshMode != ReflectionProbeRefreshMode.EveryFrame,
                     Resolution = reflectionProbe.resolution
                 };
-
-                uGameObject.ReflectionProbe = uReflectionProbe;
             }
 
             var renderer = tr.GetComponent<MeshRenderer>();
@@ -163,14 +162,21 @@ namespace Demonixis.UnityJSONSceneExporter
                         Positions = ToFloat3(mesh.vertices),
                         Normals = ToFloat3(mesh.normals),
                         UVs = ToFloat2(mesh.uv),
-                        Indices = mesh.GetIndices(0),
                         SubMeshCount = mesh.subMeshCount,
+                        Indices = new int[mesh.subMeshCount][],
                         Triangles = new int[mesh.subMeshCount][],
+                        VertexStart = new uint[mesh.subMeshCount],
+                        IndexStart = new uint[mesh.subMeshCount],
                         MeshFormat = (int)mesh.indexFormat
                     };
-
+                    
                     for (var i = 0; i < mesh.subMeshCount; i++)
+                    {
+                        uMeshFilter.Indices[i] = mesh.GetIndices(i);
                         uMeshFilter.Triangles[i] = mesh.GetTriangles(i);
+                        uMeshFilter.VertexStart[i] = mesh.GetBaseVertex(i);
+                        uMeshFilter.IndexStart[i] = mesh.GetIndexStart(i);
+                    }
 
                     uRenderer.MeshFilter = uMeshFilter;
                 }
