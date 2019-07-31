@@ -35,6 +35,8 @@ namespace Demonixis.UnityJSONSceneExporter
         [SerializeField]
         private Formatting m_JSONFormat = Formatting.Indented;
         [SerializeField]
+        private bool m_ExportTextures = false;
+        [SerializeField]
         private string m_ExportPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         [SerializeField]
         private string m_ExportFilename = "GameMap";
@@ -64,6 +66,8 @@ namespace Demonixis.UnityJSONSceneExporter
 
         public UGameObject ExportObject(Transform tr)
         {
+            var textures = new List<string>();
+
             var uGameObject = new UGameObject
             {
                 Id = tr.GetInstanceID().ToString(),
@@ -159,12 +163,39 @@ namespace Demonixis.UnityJSONSceneExporter
 
                 for (var i = 0; i < renderer.sharedMaterials.Length; i++)
                 {
+                    var sharedMaterial = renderer.sharedMaterials[i];
+
+                    var normalMap = sharedMaterial.GetTexture("_NormalMap");
+                    if (normalMap == null)
+                        normalMap = sharedMaterial.GetTexture("_BumpMap");
+
+                    var emissiveMap = sharedMaterial.GetTexture("_EmissionMap");
+
+                    var metallicMap = sharedMaterial.GetTexture("_MetallicGlossMap");
+                    var occlusionMap = sharedMaterial.GetTexture("_OcclusionMap");
+
                     uRenderer.Materials[i] = new UMaterial
                     {
-                        Scale = ToFloat2(renderer.sharedMaterials[i].mainTextureScale),
-                        Offset = ToFloat2(renderer.sharedMaterials[i].mainTextureOffset),
-                        MainTexture = renderer.sharedMaterials[i].mainTexture?.name
+                        Scale = ToFloat2(sharedMaterial.mainTextureScale),
+                        Offset = ToFloat2(sharedMaterial.mainTextureOffset),
+                        ShaderName = sharedMaterial.shader?.name,
+                        MainTexture = sharedMaterial.mainTexture?.name,
+                        NormalMap = normalMap?.name,
+                        AOMap = occlusionMap?.name,
+                        EmissionMap = emissiveMap?.name,
+                        EmissionColor = ToFloat3(sharedMaterial.GetColor("_EmissionColor")),
+                        MetalicMap = metallicMap?.name,
+                        Cutout = sharedMaterial.GetFloat("_Cutoff")
                     };
+
+                    if (m_ExportTextures)
+                    {
+                        ExportTexture(sharedMaterial.mainTexture, renderer.name, textures);
+                        ExportTexture(normalMap, renderer.name, textures);
+                        ExportTexture(emissiveMap, renderer.name, textures);
+                        ExportTexture(metallicMap, renderer.name, textures);
+                        ExportTexture(occlusionMap, renderer.name, textures);
+                    }
                 }
 
                 if (m_ExportMeshData)
@@ -174,7 +205,7 @@ namespace Demonixis.UnityJSONSceneExporter
                     var subMeshCount = mesh.subMeshCount;
 
                     UMeshFilter[] filters = new UMeshFilter[subMeshCount];
-                    
+
                     for (var i = 0; i < subMeshCount; i++)
                     {
                         var subMesh = mesh.GetSubmesh(i);
@@ -198,8 +229,31 @@ namespace Demonixis.UnityJSONSceneExporter
             return uGameObject;
         }
 
+        private void ExportTexture(Texture texture, string folder, List<string> exported)
+        {
+            if (texture == null)
+                return;
+
+            // Already exported?
+            var index = exported.IndexOf(texture.name);
+            if (index > -1)
+                return;
+
+            var tex2D = (Texture2D)texture;
+            var bytes = tex2D.EncodeToPNG();
+            var texturePath = Path.Combine(m_ExportPath, "Textures", folder);
+
+            if (!Directory.Exists(texturePath))
+                Directory.CreateDirectory(texturePath);
+
+            File.WriteAllBytes(Path.Combine(texturePath, $"{texture.name}.png"), bytes);
+
+            exported.Add(texture.name);
+        }
+
         public float[] ToFloat2(Vector2 vec) => new[] { vec.x, vec.y };
         public float[] ToFloat3(Vector3 vec) => new[] { vec.x, vec.y, vec.z };
+        public float[] ToFloat3(Color c) => new[] { c.r, c.g, c.b };
         public float[] ToFloat4(Color c) => new[] { c.r, c.g, c.b, c.a };
 
         public float[] ToFloat2(Vector2[] vecs)

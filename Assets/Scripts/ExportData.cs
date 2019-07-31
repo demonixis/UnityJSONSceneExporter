@@ -40,8 +40,15 @@ namespace Demonixis.UnityJSONSceneExporter
     {
         public float[] Scale;
         public float[] Offset;
-        public string MainTexture;
         public string ShaderName;
+        public string MainTexture;
+        public string NormalMap;
+        public string MetalicMap;
+        public string SpecularMap;
+        public string AOMap;
+        public string EmissionMap;
+        public float[] EmissionColor;
+        public float Cutout;
     }
 
     [Serializable]
