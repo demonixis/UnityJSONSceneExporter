@@ -165,14 +165,10 @@ namespace Demonixis.UnityJSONSceneExporter
                 {
                     var sharedMaterial = renderer.sharedMaterials[i];
 
-                    var normalMap = sharedMaterial.GetTexture("_NormalMap");
-                    if (normalMap == null)
-                        normalMap = sharedMaterial.GetTexture("_BumpMap");
-
-                    var emissiveMap = sharedMaterial.GetTexture("_EmissionMap");
-
-                    var metallicMap = sharedMaterial.GetTexture("_MetallicGlossMap");
-                    var occlusionMap = sharedMaterial.GetTexture("_OcclusionMap");
+                    var normalMap = sharedMaterial.TryGetTexture("_NormalMap", "_BumpMap");
+                    var emissiveMap = sharedMaterial.TryGetTexture("_EmissionMap");
+                    var metallicMap = sharedMaterial.TryGetTexture("_MetallicGlossMap");
+                    var occlusionMap = sharedMaterial.TryGetTexture("_OcclusionMap");
 
                     uRenderer.Materials[i] = new UMaterial
                     {
@@ -183,9 +179,9 @@ namespace Demonixis.UnityJSONSceneExporter
                         NormalMap = normalMap?.name,
                         AOMap = occlusionMap?.name,
                         EmissionMap = emissiveMap?.name,
-                        EmissionColor = ToFloat3(sharedMaterial.GetColor("_EmissionColor")),
+                        EmissionColor = ToFloat3(sharedMaterial.TryGetColor("_EmissionColor")),
                         MetalicMap = metallicMap?.name,
-                        Cutout = sharedMaterial.GetFloat("_Cutoff")
+                        Cutout = sharedMaterial.TryGetFloat("_Cutoff")
                     };
 
                     if (m_ExportTextures)
@@ -237,7 +233,16 @@ namespace Demonixis.UnityJSONSceneExporter
             // Already exported?
             var index = exported.IndexOf(texture.name);
             if (index > -1)
+            {
+                Debug.Log($"Alread exported {texture.name}");
                 return;
+            }
+
+            if (!texture.isReadable)
+            {
+                Debug.LogWarning($"The texture {texture.name} is not readable so we can't export it.");
+                return;
+            }
 
             var tex2D = (Texture2D)texture;
             var bytes = tex2D.EncodeToPNG();
@@ -246,17 +251,28 @@ namespace Demonixis.UnityJSONSceneExporter
             if (!Directory.Exists(texturePath))
                 Directory.CreateDirectory(texturePath);
 
-            File.WriteAllBytes(Path.Combine(texturePath, $"{texture.name}.png"), bytes);
+            try
+            {
+                File.WriteAllBytes(Path.Combine(texturePath, $"{texture.name}.png"), bytes);
 
-            exported.Add(texture.name);
+                exported.Add(texture.name);
+
+                Debug.Log($"Texture {texture.name} was exported in {texturePath}.");
+            }
+            catch (Exception ex)
+            {
+                Debug.Log(ex.Message);
+            }
         }
 
-        public float[] ToFloat2(Vector2 vec) => new[] { vec.x, vec.y };
-        public float[] ToFloat3(Vector3 vec) => new[] { vec.x, vec.y, vec.z };
-        public float[] ToFloat3(Color c) => new[] { c.r, c.g, c.b };
-        public float[] ToFloat4(Color c) => new[] { c.r, c.g, c.b, c.a };
+        #region Utility Functions
 
-        public float[] ToFloat2(Vector2[] vecs)
+        public static float[] ToFloat2(Vector2 vector) => new[] { vector.x, vector.y };
+        public static float[] ToFloat3(Vector3 vector) => new[] { vector.x, vector.y, vector.z };
+        public static float[] ToFloat3(Color color) => new[] { color.r, color.g, color.b };
+        public static float[] ToFloat4(Color color) => new[] { color.r, color.g, color.b, color.a };
+
+        public static float[] ToFloat2(Vector2[] vecs)
         {
             var list = new List<float>();
 
@@ -269,7 +285,7 @@ namespace Demonixis.UnityJSONSceneExporter
             return list.ToArray();
         }
 
-        public float[] ToFloat3(Vector3[] vecs)
+        public static float[] ToFloat3(Vector3[] vecs)
         {
             var list = new List<float>();
 
@@ -282,5 +298,7 @@ namespace Demonixis.UnityJSONSceneExporter
 
             return list.ToArray();
         }
+
+        #endregion
     }
 }
