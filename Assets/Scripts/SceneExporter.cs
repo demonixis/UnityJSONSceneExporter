@@ -66,14 +66,17 @@ namespace Demonixis.UnityJSONSceneExporter
         {
             var uGameObject = new UGameObject
             {
-                ID = tr.GetInstanceID(),
+                Id = tr.GetInstanceID().ToString(),
                 Name = tr.name,
-                Parent = tr.transform.parent?.GetInstanceID() ?? -1,
                 IsStatic = tr.gameObject.isStatic,
                 IsActive = tr.gameObject.activeSelf,
-                LocalPosition = ToFloat3(tr.transform.localPosition),
-                LocalRotation = ToFloat3(tr.transform.localRotation.eulerAngles),
-                LocalScale = ToFloat3(tr.transform.localScale)
+                Transform = new UTransform
+                {
+                    Parent = tr.transform.parent?.GetInstanceID().ToString() ?? null,
+                    LocalPosition = ToFloat3(tr.transform.localPosition),
+                    LocalRotation = ToFloat3(tr.transform.localRotation.eulerAngles),
+                    LocalScale = ToFloat3(tr.transform.localScale)
+                }
             };
 
             var collider = tr.GetComponent<Collider>();
@@ -87,12 +90,16 @@ namespace Demonixis.UnityJSONSceneExporter
                 else if (collider is MeshCollider)
                     type = ColliderType.Mesh;
 
+                var radius = 0.0f;
+                if (collider is SphereCollider)
+                    radius = ((SphereCollider)collider).radius;
+
                 uGameObject.Collider = new UCollider
                 {
                     Min = ToFloat3(collider.bounds.min),
                     Max = ToFloat3(collider.bounds.max),
                     Enabled = collider.enabled,
-                    Radius = collider.GetComponent<SphereCollider>()?.radius ?? 0,
+                    Radius = radius,
                     Type = (int)type
                 };
             }
@@ -100,6 +107,14 @@ namespace Demonixis.UnityJSONSceneExporter
             var light = tr.GetComponent<Light>();
             if (light != null)
             {
+                var lightType = 0;
+                if (light.type == LightType.Point)
+                    lightType = 1;
+                else if (light.type == LightType.Spot)
+                    lightType = 2;
+                else
+                    lightType = -1;
+
                 uGameObject.Light = new ULight
                 {
                     Intensity = light.intensity,
@@ -108,7 +123,7 @@ namespace Demonixis.UnityJSONSceneExporter
                     Angle = light.spotAngle,
                     ShadowsEnabled = light.shadows != LightShadows.None,
                     Enabled = light.enabled,
-                    Type = (int)light.type
+                    Type = lightType
                 };
             }
 
@@ -156,29 +171,25 @@ namespace Demonixis.UnityJSONSceneExporter
                 {
                     var meshFilter = renderer.GetComponent<MeshFilter>();
                     var mesh = meshFilter.sharedMesh;
+                    var subMeshCount = mesh.subMeshCount;
 
-                    var uMeshFilter = new UMeshFilter
-                    {
-                        Positions = ToFloat3(mesh.vertices),
-                        Normals = ToFloat3(mesh.normals),
-                        UVs = ToFloat2(mesh.uv),
-                        SubMeshCount = mesh.subMeshCount,
-                        Indices = new int[mesh.subMeshCount][],
-                        Triangles = new int[mesh.subMeshCount][],
-                        VertexStart = new uint[mesh.subMeshCount],
-                        IndexStart = new uint[mesh.subMeshCount],
-                        MeshFormat = (int)mesh.indexFormat
-                    };
+                    UMeshFilter[] filters = new UMeshFilter[subMeshCount];
                     
-                    for (var i = 0; i < mesh.subMeshCount; i++)
+                    for (var i = 0; i < subMeshCount; i++)
                     {
-                        uMeshFilter.Indices[i] = mesh.GetIndices(i);
-                        uMeshFilter.Triangles[i] = mesh.GetTriangles(i);
-                        uMeshFilter.VertexStart[i] = mesh.GetBaseVertex(i);
-                        uMeshFilter.IndexStart[i] = mesh.GetIndexStart(i);
+                        var subMesh = mesh.GetSubmesh(i);
+
+                        filters[i] = new UMeshFilter
+                        {
+                            Positions = ToFloat3(subMesh.vertices),
+                            Normals = ToFloat3(subMesh.normals),
+                            UVs = ToFloat2(subMesh.uv),
+                            Indices = subMesh.GetIndices(0),
+                            MeshFormat = (int)subMesh.indexFormat
+                        };
                     }
 
-                    uRenderer.MeshFilter = uMeshFilter;
+                    uRenderer.MeshFilters = filters;
                 }
 
                 uGameObject.Renderer = uRenderer;
