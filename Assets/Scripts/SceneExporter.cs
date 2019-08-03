@@ -219,6 +219,12 @@ namespace Demonixis.UnityJSONSceneExporter
                     uRenderer.MeshFilters = filters;
                 }
 
+                var terrain = GetComponent<Terrain>();
+                if (terrain != null)
+                {
+                    terrain.terrainData.
+                }
+
                 uGameObject.Renderer = uRenderer;
             }
 

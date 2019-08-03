@@ -36,6 +36,26 @@ namespace Demonixis.UnityJSONSceneExporter
     }
 
     [Serializable]
+    public class USplatPrototype
+    {
+        public string Texture;
+        public string NormalMap;
+        public float[] TileSize;
+        public float[] TileOffset;
+        public float[] Specular;
+        public float Metallic;
+        public float Smoothness;
+    }
+
+    [Serializable]
+    public class UTerrain
+    {
+        public string Heightmap;
+        public int Width;
+        public int Height;
+    }
+
+    [Serializable]
     public class UMaterial
     {
         public float[] Scale;
