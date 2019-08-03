@@ -222,7 +222,7 @@ namespace Demonixis.UnityJSONSceneExporter
                 var terrain = GetComponent<Terrain>();
                 if (terrain != null)
                 {
-                    terrain.terrainData.
+
                 }
 
                 uGameObject.Renderer = uRenderer;
