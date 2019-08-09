@@ -1,6 +1,5 @@
 # UnityJSONSceneExporter
-The goal of this project is to export an Unity scene into the JSON file format.
-For now GameObjects and few components are supported.
+Export an Unity scene into the JSON file format. Not all components are supported, this project focuses on 3D export for now.
 
 ## How does it works?
 1. Copy the `ExportData.cs` and `SceneExport.cs` files into your project
@@ -8,7 +7,7 @@ For now GameObjects and few components are supported.
 3. Select a path, a filename
 4. Click Export
 
-All children of the GameObject that contains the script will be serialized into JSON and saved.
+All children of the GameObject that contains this script will be serialized into JSON and saved.
 Now you can parse the JSON file with another game engine and reconstruct you scene.
 
 ## Exported Components
@@ -23,6 +22,10 @@ All exported component have a field called Enabled.
 | Collider | Min, Max, Radius |
 | Light | Radius, Intensity, Type, Angle, Color, Shadows |
 | Reflection Probe | Backed, Intensity, BoxSize, BoxMin, BoxMax, Resolution, Clip Planes |
+| Terrain | Heightmap, Weightmap, Layers, Size |
+
+## Texture export
+Textures can be exported too and doesn't requires that the `Read/Write` flag is checked.
 
 ### GameObject
 A GameObject contains by default all components. You've to check if those components are valid or not.
@@ -34,7 +37,7 @@ A GameObject contains by default all components. You've to check if those compon
 - IsStatic
 - IsActive
 - LocalPosition/Rotation/Scale
-- Renderer / Collider / Light / ReflectionProbe
+- Renderer / Collider / Light / ReflectionProbe / Terrain
 
 ## License
 This project is released under the MIT license.

@@ -28,6 +28,9 @@ namespace Demonixis.UnityJSONSceneExporter
 
     public class SceneExporter : MonoBehaviour
     {
+        // Name, RelativePath
+        private Dictionary<string, string> m_ExportedTextures = new Dictionary<string, string>();
+
         [SerializeField]
         private bool m_LogEnabled = true;
         [SerializeField]
@@ -35,9 +38,11 @@ namespace Demonixis.UnityJSONSceneExporter
         [SerializeField]
         private Formatting m_JSONFormat = Formatting.Indented;
         [SerializeField]
-        private bool m_ExportTextures = false;
+        private bool m_ExportTextures = true;
         [SerializeField]
-        private string m_ExportPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        private bool m_ExportAllScene = false;
+        [SerializeField]
+        private string m_ExportPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UnitySceneExporter");
         [SerializeField]
         private string m_ExportFilename = "GameMap";
 
@@ -45,7 +50,22 @@ namespace Demonixis.UnityJSONSceneExporter
         public void Export()
         {
             var transforms = GetComponentsInChildren<Transform>(true);
+
+#if UNITY_EDITOR
+            if (m_ExportAllScene)
+            {
+                var tr = Resources.FindObjectsOfTypeAll(typeof(Transform));
+                Array.Resize(ref transforms, tr.Length);
+
+                for (var i = 0; i < tr.Length; i++)
+                    transforms[i] = (Transform)tr[i];
+            }
+#endif
+            // Name, Path
+            
             var list = new List<UGameObject>();
+
+            m_ExportedTextures.Clear();
 
             foreach (var tr in transforms)
             {
@@ -54,6 +74,9 @@ namespace Demonixis.UnityJSONSceneExporter
                 if (m_LogEnabled)
                     Debug.Log($"Exporter: {tr.name}");
             }
+
+            if (!Directory.Exists(m_ExportPath))
+                Directory.CreateDirectory(m_ExportPath);
 
             var json = JsonConvert.SerializeObject(list.ToArray(), m_JSONFormat);
             var path = Path.Combine(m_ExportPath, $"{m_ExportFilename}.json");
@@ -66,8 +89,6 @@ namespace Demonixis.UnityJSONSceneExporter
 
         public UGameObject ExportObject(Transform tr)
         {
-            var textures = new List<string>();
-
             var uGameObject = new UGameObject
             {
                 Id = tr.GetInstanceID().ToString(),
@@ -164,7 +185,6 @@ namespace Demonixis.UnityJSONSceneExporter
                 for (var i = 0; i < renderer.sharedMaterials.Length; i++)
                 {
                     var sharedMaterial = renderer.sharedMaterials[i];
-
                     var normalMap = sharedMaterial.TryGetTexture("_NormalMap", "_BumpMap");
                     var emissiveMap = sharedMaterial.TryGetTexture("_EmissionMap");
                     var metallicMap = sharedMaterial.TryGetTexture("_MetallicGlossMap");
@@ -184,14 +204,11 @@ namespace Demonixis.UnityJSONSceneExporter
                         Cutout = sharedMaterial.TryGetFloat("_Cutoff")
                     };
 
-                    if (m_ExportTextures)
-                    {
-                        ExportTexture(sharedMaterial.mainTexture, renderer.name, textures);
-                        ExportTexture(normalMap, renderer.name, textures);
-                        ExportTexture(emissiveMap, renderer.name, textures);
-                        ExportTexture(metallicMap, renderer.name, textures);
-                        ExportTexture(occlusionMap, renderer.name, textures);
-                    }
+                    ExportTexture(sharedMaterial.mainTexture, renderer.name);
+                    ExportTexture(normalMap, renderer.name);
+                    ExportTexture(emissiveMap, renderer.name);
+                    ExportTexture(metallicMap, renderer.name);
+                    ExportTexture(occlusionMap, renderer.name);
                 }
 
                 if (m_ExportMeshData)
@@ -199,8 +216,7 @@ namespace Demonixis.UnityJSONSceneExporter
                     var meshFilter = renderer.GetComponent<MeshFilter>();
                     var mesh = meshFilter.sharedMesh;
                     var subMeshCount = mesh.subMeshCount;
-
-                    UMeshFilter[] filters = new UMeshFilter[subMeshCount];
+                    var filters = new UMeshFilter[subMeshCount];
 
                     for (var i = 0; i < subMeshCount; i++)
                     {
@@ -219,59 +235,134 @@ namespace Demonixis.UnityJSONSceneExporter
                     uRenderer.MeshFilters = filters;
                 }
 
-                var terrain = GetComponent<Terrain>();
-                if (terrain != null)
-                {
+                uGameObject.Renderer = uRenderer;
+            }
 
+            var terrain = tr.GetComponent<Terrain>();
+            if (terrain != null)
+            {
+                var terrainData = terrain.terrainData;
+                var terrainLayer = terrainData.terrainLayers;
+
+                var layers = new UTerrainLayer[terrainLayer.Length];
+                for (var i = 0; i < layers.Length; i++)
+                {
+                    layers[i] = new UTerrainLayer
+                    {
+                        Name = terrainLayer[i].name,
+                        Albedo = terrainLayer[i].diffuseTexture.name,
+                        Normal = terrainLayer[i]?.normalMapTexture?.name,
+                        Metallic = terrainLayer[i].metallic,
+                        Smoothness = terrainLayer[i].smoothness,
+                        SpecularColor = ToFloat3(terrainLayer[i].specular),
+                        Offset = ToFloat2(terrainLayer[i].tileOffset),
+                        Scale = ToFloat2(terrainLayer[i].tileSize)
+                    };
+
+                    ExportTexture(terrainLayer[i].diffuseTexture, terrain.name);
+                    ExportTexture(terrainLayer[i].normalMapTexture, terrain.name);
                 }
 
-                uGameObject.Renderer = uRenderer;
+                var alphamaps = new string[terrainData.alphamapTextures.Length];
+                for (var i = 0; i < alphamaps.Length; i++)
+                {
+                    alphamaps[i] = terrainData.alphamapTextures[i].name;
+                    ExportTexture(terrainData.alphamapTextures[i], terrain.name);
+                }
+
+                ExportTexture(terrainData.heightmapTexture, terrain.name);
+
+                var uTerrain = new UTerrain
+                {
+                    Enabled = terrain.enabled,
+                    Name = terrain.name,
+                    Size = ToFloat3(terrainData.size),
+                    Layers = layers,
+                    Alphamaps = alphamaps,
+                    Heightmap = terrainData.heightmapTexture.name
+                };
+
+                uGameObject.Terrain = uTerrain;
             }
 
             return uGameObject;
         }
 
-        private void ExportTexture(Texture texture, string folder, List<string> exported)
+        private string ExportTexture(Texture texture, string folder)
         {
             if (texture == null)
-                return;
+                return null;
 
-            // Already exported?
-            var index = exported.IndexOf(texture.name);
-            if (index > -1)
-            {
-                Debug.Log($"Alread exported {texture.name}");
-                return;
-            }
+            if (!m_ExportTextures)
+                return texture.name;
 
             if (!texture.isReadable)
             {
                 Debug.LogWarning($"The texture {texture.name} is not readable so we can't export it.");
-                return;
+                return texture.name;
             }
 
-            var tex2D = (Texture2D)texture;
-            var bytes = tex2D.EncodeToPNG();
-            var texturePath = Path.Combine(m_ExportPath, "Textures", folder);
+            if (m_ExportedTextures.ContainsKey(texture.name))
+                return m_ExportedTextures[texture.name];
 
-            if (!Directory.Exists(texturePath))
-                Directory.CreateDirectory(texturePath);
+            Texture2D tex2D = null;
+
+            if (texture is RenderTexture)
+            {
+                RenderTexture.active = (RenderTexture)texture;
+                tex2D = new Texture2D(texture.width, texture.height);
+                tex2D.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+                tex2D.Apply();
+            }
+            else
+                tex2D = ToTexture2D(texture);
+
+            var bytes = tex2D.EncodeToPNG();
+            var absoluteTexturePath = Path.Combine(m_ExportPath, "Textures", folder);
+
+            if (!Directory.Exists(absoluteTexturePath))
+                Directory.CreateDirectory(absoluteTexturePath);
+
+            var textureName = texture.name;
+            if (string.IsNullOrEmpty(textureName))
+                textureName = Guid.NewGuid().ToString();
 
             try
             {
-                File.WriteAllBytes(Path.Combine(texturePath, $"{texture.name}.png"), bytes);
+                File.WriteAllBytes(Path.Combine(absoluteTexturePath, $"{texture.name}.png"), bytes);
 
-                exported.Add(texture.name);
+                var relativeTexturePath = Path.Combine("Textures", folder, $"{texture.name}.png");
 
-                Debug.Log($"Texture {texture.name} was exported in {texturePath}.");
+                m_ExportedTextures.Add(texture.name, relativeTexturePath);
+
+                Debug.Log($"Texture {texture.name} was exported in {absoluteTexturePath}.");
+
+                return relativeTexturePath;
             }
             catch (Exception ex)
             {
                 Debug.Log(ex.Message);
+
+                return texture.name;
             }
         }
 
         #region Utility Functions
+
+        public Texture2D ToTexture2D(Texture nonReadWriteTexture)
+        {
+            var rt = RenderTexture.GetTemporary(nonReadWriteTexture.width, nonReadWriteTexture.height);
+            RenderTexture.active = rt;
+
+            Graphics.Blit(nonReadWriteTexture, rt);
+
+            var tex2D = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, true);
+            tex2D.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0, false);
+
+            RenderTexture.active = null;
+
+            return tex2D;
+        }
 
         public static float[] ToFloat2(Vector2 vector) => new[] { vector.x, vector.y };
         public static float[] ToFloat3(Vector3 vector) => new[] { vector.x, vector.y, vector.z };

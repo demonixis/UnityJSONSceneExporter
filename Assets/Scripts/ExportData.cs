@@ -36,23 +36,27 @@ namespace Demonixis.UnityJSONSceneExporter
     }
 
     [Serializable]
-    public class USplatPrototype
+    public class UTerrainLayer
     {
-        public string Texture;
-        public string NormalMap;
-        public float[] TileSize;
-        public float[] TileOffset;
-        public float[] Specular;
+        public string Name;
+        public string Albedo;
+        public string Normal;
         public float Metallic;
+        public float[] SpecularColor;
         public float Smoothness;
+        public float[] Offset;
+        public float[] Scale;
     }
 
     [Serializable]
     public class UTerrain
     {
+        public bool Enabled;
+        public string Name;
         public string Heightmap;
-        public int Width;
-        public int Height;
+        public string[] Alphamaps;
+        public UTerrainLayer[] Layers;
+        public float[] Size;
     }
 
     [Serializable]
@@ -118,5 +122,6 @@ namespace Demonixis.UnityJSONSceneExporter
         public UCollider Collider;
         public ULight Light;
         public UReflectionProbe ReflectionProbe;
+        public UTerrain Terrain;
     }
 }
