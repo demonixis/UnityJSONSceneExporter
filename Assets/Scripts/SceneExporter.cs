@@ -45,6 +45,8 @@ namespace Demonixis.UnityJSONSceneExporter
         private string m_ExportPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UnitySceneExporter");
         [SerializeField]
         private string m_ExportFilename = "GameMap";
+        [SerializeField]
+        private bool m_MonoGameExport = false;
 
         [ContextMenu("Export")]
         public void Export()
@@ -62,10 +64,13 @@ namespace Demonixis.UnityJSONSceneExporter
             }
 #endif
             // Name, Path
-            
+
             var list = new List<UGameObject>();
 
             m_ExportedTextures.Clear();
+
+            if (m_MonoGameExport)
+                MonoGameExporter.BeginContentFile("Windows");
 
             foreach (var tr in transforms)
             {
@@ -82,6 +87,12 @@ namespace Demonixis.UnityJSONSceneExporter
             var path = Path.Combine(m_ExportPath, $"{m_ExportFilename}.json");
 
             File.WriteAllText(path, json);
+
+            if (m_MonoGameExport)
+            {
+                MonoGameExporter.AddMap(path);
+                File.WriteAllText(Path.Combine(m_ExportPath, "Content.mgcb"), MonoGameExporter.GetContentData());
+            }
 
             if (m_LogEnabled)
                 Debug.Log($"Exported: {list.Count} objects");
@@ -334,6 +345,9 @@ namespace Demonixis.UnityJSONSceneExporter
                 var relativeTexturePath = Path.Combine("Textures", folder, $"{texture.name}.png");
 
                 m_ExportedTextures.Add(texture.name, relativeTexturePath);
+
+                if (m_MonoGameExport)
+                    MonoGameExporter.AddTexture(relativeTexturePath);
 
                 Debug.Log($"Texture {texture.name} was exported in {absoluteTexturePath}.");
 

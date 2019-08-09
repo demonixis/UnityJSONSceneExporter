@@ -2,7 +2,7 @@
 Export an Unity scene into the JSON file format. Not all components are supported, this project focuses on 3D export for now.
 
 ## How does it works?
-1. Copy the `ExportData.cs` and `SceneExport.cs` files into your project
+1. Copy scripts in your project
 2. Place the `SceneExport` script on a GameObject
 3. Select a path, a filename
 4. Click Export
@@ -26,6 +26,9 @@ All exported component have a field called Enabled.
 
 ## Texture export
 Textures can be exported too and doesn't requires that the `Read/Write` flag is checked.
+
+## External Exporter
+For now there is a MonoGame exporter that generates an MGCB content file that contains textures and map file.
 
 ### GameObject
 A GameObject contains by default all components. You've to check if those components are valid or not.

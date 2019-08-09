@@ -1960,6 +1960,7 @@ MonoBehaviour:
   m_ExportAllScene: 0
   m_ExportPath: C:\Users\demon\Documents\UnitySceneExporter
   m_ExportFilename: GameMap
+  m_MonoGameExport: 0
 --- !u!4 &326953893
 Transform:
   m_ObjectHideFlags: 0
@@ -7621,7 +7622,7 @@ GameObject:
   - component: {fileID: 1465659516}
   - component: {fileID: 1465659520}
   m_Layer: 0
-  m_Name: Cube (1)
+  m_Name: Origin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7719,6 +7720,7 @@ MonoBehaviour:
   m_ExportAllScene: 0
   m_ExportPath: D:\Utilisateurs\Yannick\Documents
   m_ExportFilename: GameMap
+  m_MonoGameExport: 0
 --- !u!1 &1518059007
 GameObject:
   m_ObjectHideFlags: 0
@@ -11675,6 +11677,7 @@ MonoBehaviour:
   m_ExportAllScene: 0
   m_ExportPath: C:\Users\demon\Documents\UnitySceneExporter
   m_ExportFilename: Terrain
+  m_MonoGameExport: 0
 --- !u!1001 &5200407450393106026
 PrefabInstance:
   m_ObjectHideFlags: 0
